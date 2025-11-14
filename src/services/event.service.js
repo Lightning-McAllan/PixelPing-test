@@ -2,21 +2,21 @@ const logger = require("./logging.service");
 
 module.exports = {
     logPixelRequest(data) {
-        logger.log({
-            event: "pixel_request",
+        logger.logCustomEvent("pixel_request", {
             pixelType: data.pixelType,
-            headers: data.headers,
+            userAgent: data.headers["user-agent"] || "unknown",
+            referer: data.headers["referer"] || "direct",
             query: data.query,
             ip: data.ip
-        });
+        }, data.ip);
     },
 
     logEvent(data) {
-        logger.log({
-            event: "custom_event",
-            headers: data.headers,
+        logger.logCustomEvent("custom_event", {
+            userAgent: data.headers["user-agent"] || "unknown",
+            referer: data.headers["referer"] || "direct",
             body: data.body,
             ip: data.ip
-        });
+        }, data.ip);
     }
 };
