@@ -1,5 +1,6 @@
 const express = require("express");
 const http = require("http");
+const axios = require("axios");
 
 const {pixelRoutes, eventRoutes} = require("./routes");
 const logger = require("./services/logging.service");
@@ -42,14 +43,15 @@ app.use("/event", eventRoutes);
 // Self-ping function to keep the server alive
 function startSelfPing() {
     const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes in milliseconds
-    const SELF_PING_URL = process.env.SELF_PING_URL || "http://localhost:3000/self-ping";
+    const SELF_PING_URL = process.env.SELF_PING_URL || "https://your-render-url.com/self-ping";
 
-    setInterval(() => {
-        http.get(SELF_PING_URL, (res) => {
-            console.log(`Self-ping successful: ${res.statusCode}`);
-        }).on("error", (err) => {
-            console.error("Self-ping failed:", err.message);
-        });
+    setInterval(async () => {
+        try {
+            const response = await axios.get(SELF_PING_URL);
+            console.log(`Self-ping successful: ${response.status}`);
+        } catch (error) {
+            console.error("Self-ping failed:", error.message);
+        }
     }, PING_INTERVAL);
 }
 

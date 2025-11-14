@@ -7,6 +7,9 @@ const PIXEL = Buffer.from(
     "base64"
 );
 
+// Store pixel metadata for tracking behavior
+const pixelMetadata = new Map();
+
 /* ---------------------------------------------------------
    GET PIXEL URL
 --------------------------------------------------------- */
@@ -91,12 +94,89 @@ function serveStreamPixel(req, res, pixelId, type) {
 }
 
 /* ---------------------------------------------------------
-   SERVE ACTUAL PIXEL IMAGE
+   SERVE ACTUAL PIXEL IMAGE WITH DELAYS
 --------------------------------------------------------- */
-function servePixelImage(req, res, pixelId, type) {
+function servePixelImage(req, res, pixelId, pixelType) {
+    // Store metadata for this pixel
+    pixelMetadata.set(pixelId, {
+        type: pixelType,
+        createdAt: new Date(),
+        ip: req.ip
+    });
+
+    // Clean up old metadata after 1 hour
+    if (pixelMetadata.size > 1000) {
+        const now = Date.now();
+        for (const [id, data] of pixelMetadata.entries()) {
+            if (now - data.createdAt > 3600000) {
+                pixelMetadata.delete(id);
+            }
+        }
+    }
+
+    const metadata = pixelMetadata.get(pixelId);
+    const type = metadata?.type || pixelType || "basic";
+
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
-    res.end(PIXEL);
+
+    switch (type) {
+        case "basic":
+            // Serve immediately
+            logger.logBasicLoaded(pixelId, req.ip, req.headers);
+            res.end(PIXEL);
+            break;
+
+        case "lazy":
+            // Delay 2 seconds before serving
+            logger.logLazyInit(pixelId, req.ip);
+            setTimeout(() => {
+                logger.logLazyLoaded(pixelId, req.ip);
+                res.end(PIXEL);
+            }, 2000);
+            break;
+
+        case "step":
+            // Serve immediately, but log followup after 5 seconds
+            logger.logStepInit(pixelId, req.ip);
+            res.end(PIXEL);
+            setTimeout(() => {
+                logger.logStepFollowup(pixelId, req.ip);
+            }, 5000);
+            break;
+
+        case "stream":
+            // Stream pixel
+            logger.logStreamInit(pixelId, req.ip);
+            res.write(PIXEL);
+
+            let seconds = 0;
+            const interval = setInterval(() => {
+                seconds++;
+                logger.logStreamTick(pixelId, req.ip, seconds);
+            }, 1000);
+
+            // When client closes connection
+            req.on("close", () => {
+                clearInterval(interval);
+                logger.logStreamClosed(pixelId, req.ip, seconds);
+            });
+
+            // Force end after 15 seconds
+            setTimeout(() => {
+                clearInterval(interval);
+                if (!res.headersSent || !res.writableEnded) {
+                    res.end();
+                }
+                logger.logStreamClosed(pixelId, req.ip, seconds);
+            }, 15000);
+            break;
+
+        default:
+            // Default to basic
+            logger.logBasicLoaded(pixelId, req.ip, req.headers);
+            res.end(PIXEL);
+    }
 }
 
 /* ---------------------------------------------------------
