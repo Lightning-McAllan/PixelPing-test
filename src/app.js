@@ -49,7 +49,8 @@ function startSelfPing() {
     const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
     const PORT = process.env.PORT || 3000;
     // Default to local self-ping when not provided (useful for dev)
-    const DEFAULT_SELF_PING_URL = `http://localhost:${PORT}/self-ping`;
+    const deployedBase = (process.env.DEPLOYED_BASE_URL || "").replace(/\/+$/, "");
+    const DEFAULT_SELF_PING_URL = deployedBase ? `${deployedBase}/self-ping` : `http://localhost:${PORT}/self-ping`;
     const SELF_PING_URL = process.env.SELF_PING_URL || DEFAULT_SELF_PING_URL;
     logger.logDebug("Starting self-ping", { url: SELF_PING_URL, intervalMs: PING_INTERVAL });
 
@@ -58,7 +59,12 @@ function startSelfPing() {
             const response = await axios.get(SELF_PING_URL, { timeout: 5000 });
             logger.logInfo(`Self-ping successful: ${response.status}`, { url: SELF_PING_URL, status: response.status });
         } catch (error) {
-            logger.logError("Self-ping failed", { url: SELF_PING_URL, message: error.message, stack: error.stack });
+            const data = { url: SELF_PING_URL, message: error.message, stack: error.stack };
+            if (error.response) {
+                data.status = error.response.status;
+                data.body = error.response.data;
+            }
+            logger.logError("Self-ping failed", data);
         }
     }
 

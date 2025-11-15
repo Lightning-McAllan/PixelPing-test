@@ -22,7 +22,7 @@ function getPixelUrl(type, pixelId, req) {
    BASIC PIXEL
 --------------------------------------------------------- */
 function serveBasicPixel(req, res, pixelId, type) {
-    logger.logBasicLoaded(pixelId, req.ip, req.headers);
+    logger.logBasicLoaded(pixelId, req.ip, req.headers, req.query);
 
     const pixelUrl = getPixelUrl(type, pixelId, req);
     return res.json({
@@ -40,7 +40,7 @@ function serveBasicPixel(req, res, pixelId, type) {
    LAZY PIXEL
 --------------------------------------------------------- */
 function serveLazyPixel(req, res, pixelId, type) {
-    logger.logLazyInit(pixelId, req.ip);
+    logger.logLazyInit(pixelId, req.ip, req.query);
 
     const pixelUrl = getPixelUrl(type, pixelId, req);
     return res.json({
@@ -59,7 +59,7 @@ function serveLazyPixel(req, res, pixelId, type) {
    STEP PIXEL
 --------------------------------------------------------- */
 function serveStepPixel(req, res, pixelId, type) {
-    logger.logStepInit(pixelId, req.ip);
+    logger.logStepInit(pixelId, req.ip, req.query);
 
     const pixelUrl = getPixelUrl(type, pixelId, req);
     return res.json({
@@ -78,7 +78,7 @@ function serveStepPixel(req, res, pixelId, type) {
    STREAM PIXEL
 --------------------------------------------------------- */
 function serveStreamPixel(req, res, pixelId, type) {
-    logger.logStreamInit(pixelId, req.ip);
+    logger.logStreamInit(pixelId, req.ip, req.query);
 
     const pixelUrl = getPixelUrl(type, pixelId, req);
     return res.json({
@@ -97,7 +97,7 @@ function serveStreamPixel(req, res, pixelId, type) {
    PERSISTENT PIXEL
 --------------------------------------------------------- */
 function servePersistentPixel(req, res, pixelId, type) {
-    logger.log("info", "Persistent pixel initialized", { pixelId, ip: req.ip });
+    logger.log("info", "Persistent pixel initialized", { pixelId, ip: req.ip, query: req.query });
 
     const pixelUrl = getPixelUrl(type, pixelId, req);
     return res.json({
@@ -141,43 +141,43 @@ function servePixelImage(req, res, pixelId, pixelType) {
     switch (type) {
         case "basic":
             // Serve immediately
-            logger.logBasicLoaded(pixelId, req.ip, req.headers);
+            logger.logBasicLoaded(pixelId, req.ip, req.headers, req.query);
             res.end(PIXEL);
             break;
 
         case "lazy":
             // Delay 2 seconds before serving
-            logger.logLazyInit(pixelId, req.ip);
+            logger.logLazyInit(pixelId, req.ip, req.query);
             setTimeout(() => {
-                logger.logLazyLoaded(pixelId, req.ip);
+                logger.logLazyLoaded(pixelId, req.ip, req.query);
                 res.end(PIXEL);
             }, 2000);
             break;
 
         case "step":
             // Introduce a 5-second delay before serving the image
-            logger.logStepInit(pixelId, req.ip);
+            logger.logStepInit(pixelId, req.ip, req.query);
             setTimeout(() => {
                 res.end(PIXEL);
-                logger.logStepFollowup(pixelId, req.ip);
+                logger.logStepFollowup(pixelId, req.ip, req.query);
             }, 5000);
             break;
 
         case "stream":
             // Stream pixel
-            logger.logStreamInit(pixelId, req.ip);
+            logger.logStreamInit(pixelId, req.ip, req.query);
             res.write(PIXEL);
 
             let seconds = 0;
             const interval = setInterval(() => {
                 seconds++;
-                logger.logStreamTick(pixelId, req.ip, seconds);
+                logger.logStreamTick(pixelId, req.ip, seconds, req.query);
             }, 1000);
 
             // When client closes connection
             req.on("close", () => {
                 clearInterval(interval);
-                logger.logStreamClosed(pixelId, req.ip, seconds);
+                logger.logStreamClosed(pixelId, req.ip, seconds, req.query);
             });
 
             // Force end after 15 seconds
@@ -186,13 +186,13 @@ function servePixelImage(req, res, pixelId, pixelType) {
                 if (!res.headersSent || !res.writableEnded) {
                     res.end();
                 }
-                logger.logStreamClosed(pixelId, req.ip, seconds);
+                logger.logStreamClosed(pixelId, req.ip, seconds, req.query);
             }, 15000);
             break;
 
         case "persistent":
             // Persistent pixel: Keeps the connection open indefinitely
-            logger.log("info", "Persistent pixel connection started", { pixelId, ip: req.ip });
+            logger.log("info", "Persistent pixel connection started", { pixelId, ip: req.ip, query: req.query });
 
             res.setHeader("Content-Type", "image/png");
             res.setHeader("Cache-Control", "no-store");
@@ -202,20 +202,20 @@ function servePixelImage(req, res, pixelId, pixelType) {
 
             // Keep the connection open
             const keepAliveInterval = setInterval(() => {
-                logger.log("debug", "Persistent pixel keep-alive", { pixelId, ip: req.ip });
+                logger.log("debug", "Persistent pixel keep-alive", { pixelId, ip: req.ip, query: req.query });
                 res.write(PIXEL);
             }, 5000); // Send a pixel every 5 seconds
 
             // Handle client disconnect
             req.on("close", () => {
                 clearInterval(keepAliveInterval);
-                logger.log("info", "Persistent pixel connection closed", { pixelId, ip: req.ip });
+                logger.log("info", "Persistent pixel connection closed", { pixelId, ip: req.ip, query: req.query });
             });
             break;
 
         default:
             // Default to basic
-            logger.logBasicLoaded(pixelId, req.ip, req.headers);
+                logger.logBasicLoaded(pixelId, req.ip, req.headers, req.query);
             res.end(PIXEL);
     }
 }

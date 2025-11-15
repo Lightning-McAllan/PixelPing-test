@@ -125,46 +125,48 @@ module.exports = {
     },
 
     // -------- BASIC PIXEL --------
-    logBasicLoaded(pixelId, ip, headers) {
+    logBasicLoaded(pixelId, ip, headers, query = {}) {
         const data = {
             event: "basic_loaded",
             pixelType: "basic",
             pixelId,
             ip,
             userAgent: headers["user-agent"] || "unknown"
+            ,
+            query
         };
         logEvent("success", "📍 BASIC_PIXEL_LOADED", "Basic pixel was successfully loaded and served to the client", data, "pixel");
     },
 
     // -------- LAZY PIXEL --------
-    logLazyInit(pixelId, ip) {
-        logEvent("info", "⏱️  LAZY_PIXEL_INIT", "Lazy pixel initialization started - will load after delay", { pixelType: "lazy", pixelId, ip }, "pixel");
+    logLazyInit(pixelId, ip, query = {}) {
+        logEvent("info", "⏱️  LAZY_PIXEL_INIT", "Lazy pixel initialization started - will load after delay", { pixelType: "lazy", pixelId, ip, query }, "pixel");
     },
 
-    logLazyLoaded(pixelId, ip) {
-        logEvent("success", "✓ LAZY_PIXEL_LOADED", "Lazy pixel successfully loaded after 2 second delay", { pixelType: "lazy", pixelId, ip }, "pixel");
+    logLazyLoaded(pixelId, ip, query = {}) {
+        logEvent("success", "✓ LAZY_PIXEL_LOADED", "Lazy pixel successfully loaded after 2 second delay", { pixelType: "lazy", pixelId, ip, query }, "pixel");
     },
 
     // -------- STEP PIXEL --------
-    logStepInit(pixelId, ip) {
-        logEvent("info", "👣 STEP_PIXEL_INIT", "Step pixel initialization started - followup will trigger after 5 seconds", { pixelType: "step", pixelId, ip }, "pixel");
+    logStepInit(pixelId, ip, query = {}) {
+        logEvent("info", "👣 STEP_PIXEL_INIT", "Step pixel initialization started - followup will trigger after 5 seconds", { pixelType: "step", pixelId, ip, query }, "pixel");
     },
 
-    logStepFollowup(pixelId, ip) {
-        logEvent("success", "👣 STEP_PIXEL_FOLLOWUP", "Step pixel followup completed after 5 second delay", { pixelType: "step", pixelId, ip }, "pixel");
+    logStepFollowup(pixelId, ip, query = {}) {
+        logEvent("success", "👣 STEP_PIXEL_FOLLOWUP", "Step pixel followup completed after 5 second delay", { pixelType: "step", pixelId, ip, query }, "pixel");
     },
 
     // -------- STREAM PIXEL --------
-    logStreamInit(pixelId, ip) {
-        logEvent("info", "🌊 STREAM_PIXEL_INIT", "Stream pixel initialized - will stream data for up to 15 seconds", { pixelType: "stream", pixelId, ip }, "pixel");
+    logStreamInit(pixelId, ip, query = {}) {
+        logEvent("info", "🌊 STREAM_PIXEL_INIT", "Stream pixel initialized - will stream data for up to 15 seconds", { pixelType: "stream", pixelId, ip, query }, "pixel");
     },
 
-    logStreamTick(pixelId, ip, seconds) {
-        logEvent("debug", "🌊 STREAM_TICK", `Stream pixel active - ${seconds} second(s) elapsed`, { pixelType: "stream", pixelId, ip, seconds }, "pixel");
+    logStreamTick(pixelId, ip, seconds, query = {}) {
+        logEvent("debug", "🌊 STREAM_TICK", `Stream pixel active - ${seconds} second(s) elapsed`, { pixelType: "stream", pixelId, ip, seconds, query }, "pixel");
     },
 
-    logStreamClosed(pixelId, ip, seconds) {
-        logEvent("success", "🌊 STREAM_CLOSED", `Stream pixel closed after ${seconds} second(s) of streaming`, { pixelType: "stream", pixelId, ip, totalSeconds: seconds }, "pixel");
+    logStreamClosed(pixelId, ip, seconds, query = {}) {
+        logEvent("success", "🌊 STREAM_CLOSED", `Stream pixel closed after ${seconds} second(s) of streaming`, { pixelType: "stream", pixelId, ip, totalSeconds: seconds, query }, "pixel");
     },
 
     // -------- GENERIC PIXEL REQUEST --------
