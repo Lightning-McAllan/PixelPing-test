@@ -25,8 +25,50 @@ router.get("/serve/:pixelId", (req, res) => {
     const pixelId = req.params.pixelId;
     const pixelType = req.query.type || "basic";
 
-    // Serve the actual pixel image
-    pixelService.servePixelImageOnly(req, res, pixelId, pixelType);
+    if (pixelType === "persistent") {
+        const startTime = Date.now();
+
+        logger.log("info", "Persistent connection started", { pixelId, ip: req.ip });
+
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "no-store");
+
+        // Send the pixel initially
+        res.write(Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=",
+            "base64"
+        ));
+
+        // Keep the connection open
+        const keepAliveInterval = setInterval(() => {
+            logger.log("debug", "Persistent pixel keep-alive", { pixelId, ip: req.ip });
+            res.write(Buffer.from(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=",
+                "base64"
+            ));
+        }, 5000); // Send a pixel every 5 seconds
+
+        // Handle client disconnect
+        req.on("close", () => {
+            clearInterval(keepAliveInterval);
+            const duration = Date.now() - startTime;
+            logger.log("info", "Persistent connection closed", { pixelId, ip: req.ip, duration });
+        });
+    } else {
+        // Serve the actual pixel image
+        pixelService.servePixelImageOnly(req, res, pixelId, pixelType);
+    }
+});
+
+// ==================== PERSISTENT PIXEL ROUTE ====================
+router.get("/persistent", async (req, res) => {
+    const pixelId = uuidv4();
+
+    // Log the persistent pixel request
+    logger.log("info", "Persistent pixel requested", { pixelId, ip: req.ip });
+
+    // Serve the persistent pixel
+    return pixelService.servePixel("persistent", req, res, pixelId);
 });
 
 module.exports = router;

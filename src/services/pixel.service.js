@@ -94,6 +94,24 @@ function serveStreamPixel(req, res, pixelId, type) {
 }
 
 /* ---------------------------------------------------------
+   PERSISTENT PIXEL
+--------------------------------------------------------- */
+function servePersistentPixel(req, res, pixelId, type) {
+    logger.log("info", "Persistent pixel initialized", { pixelId, ip: req.ip });
+
+    const pixelUrl = getPixelUrl(type, pixelId, req);
+    return res.json({
+        success: true,
+        pixelType: type,
+        pixelId,
+        pixelUrl,
+        description: "Persistent pixel - keeps connection open indefinitely",
+        url: pixelUrl,
+        format: "json"
+    });
+}
+
+/* ---------------------------------------------------------
    SERVE ACTUAL PIXEL IMAGE WITH DELAYS
 --------------------------------------------------------- */
 function servePixelImage(req, res, pixelId, pixelType) {
@@ -137,10 +155,10 @@ function servePixelImage(req, res, pixelId, pixelType) {
             break;
 
         case "step":
-            // Serve immediately, but log followup after 5 seconds
+            // Introduce a 5-second delay before serving the image
             logger.logStepInit(pixelId, req.ip);
-            res.end(PIXEL);
             setTimeout(() => {
+                res.end(PIXEL);
                 logger.logStepFollowup(pixelId, req.ip);
             }, 5000);
             break;
@@ -172,6 +190,29 @@ function servePixelImage(req, res, pixelId, pixelType) {
             }, 15000);
             break;
 
+        case "persistent":
+            // Persistent pixel: Keeps the connection open indefinitely
+            logger.log("info", "Persistent pixel connection started", { pixelId, ip: req.ip });
+
+            res.setHeader("Content-Type", "image/png");
+            res.setHeader("Cache-Control", "no-store");
+
+            // Send the pixel initially
+            res.write(PIXEL);
+
+            // Keep the connection open
+            const keepAliveInterval = setInterval(() => {
+                logger.log("debug", "Persistent pixel keep-alive", { pixelId, ip: req.ip });
+                res.write(PIXEL);
+            }, 5000); // Send a pixel every 5 seconds
+
+            // Handle client disconnect
+            req.on("close", () => {
+                clearInterval(keepAliveInterval);
+                logger.log("info", "Persistent pixel connection closed", { pixelId, ip: req.ip });
+            });
+            break;
+
         default:
             // Default to basic
             logger.logBasicLoaded(pixelId, req.ip, req.headers);
@@ -189,7 +230,8 @@ module.exports = {
             basic: serveBasicPixel,
             lazy: serveLazyPixel,
             step: serveStepPixel,
-            stream: serveStreamPixel
+            stream: serveStreamPixel,
+            persistent: servePersistentPixel // Add persistent pixel type
         };
 
         const handler = map[type];
