@@ -18,6 +18,7 @@ router.get("/health", (req, res) => {
 module.exports = {
     pixelRoutes: require("./pixel.routes"),
     eventRoutes: require("./event.routes"),
+    assetsRoute: require("./assets.routes"),
     selfPingRoute: router,
     healthRoute: router
 };

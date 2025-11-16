@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const axios = require("axios");
 
-const {pixelRoutes, eventRoutes, selfPingRoute, healthRoute} = require("./routes");
+const {pixelRoutes, eventRoutes, assetsRoute, selfPingRoute, healthRoute} = require("./routes");
 const logger = require("./services/logging.service");
 
 const app = express();
@@ -39,6 +39,7 @@ app.use((req, res, next) => {
 
 app.use("/pixel", pixelRoutes);
 app.use("/event", eventRoutes);
+app.use("/assets", assetsRoute);
 
 // Mount health and self-ping endpoints at root
 app.use("/", selfPingRoute);
